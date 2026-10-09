@@ -1,0 +1,10 @@
+{
+  "fedora_release": "44",
+  "architecture": "x86_64",
+  "boot_mode": "uefi",
+  "installation_mode": "online",
+  "locale": "de_DE.UTF-8",
+  "keyboard_layout": "de",
+  "timezone": "Europe/Berlin",
+  "output_iso": "pandora-linux-f44-x86_64.iso"
+}

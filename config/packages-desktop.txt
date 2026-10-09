@@ -1,0 +1,41 @@
+# Desktop packages, installed after the base system. One spec per line.
+# Fedora packages use names; COPR packages use name-epoch:version-release.arch pins.
+# Third-party package selection is constrained by config/repos/*.repo.
+pipewire
+pipewire-alsa
+pipewire-pulseaudio
+wireplumber
+alsa-utils
+flatpak
+zsh
+sddm
+xdg-desktop-portal
+xdg-desktop-portal-gtk
+wl-clipboard
+grim
+slurp
+google-noto-sans-fonts
+google-noto-color-emoji-fonts
+dejavu-sans-mono-fonts
+accountsservice
+polkit
+mesa-dri-drivers
+mesa-libEGL
+hyprland-0:0.56.2-3.fc44.x86_64
+hyprland-uwsm-0:0.56.2-3.fc44.x86_64
+uwsm-0:0.27.0-1.fc44.noarch
+xdg-desktop-portal-hyprland-1:1.4.1-1.fc44.x86_64
+aquamarine-0:0.15.1-1.fc44.x86_64
+hyprcursor-0:0.1.13-2.fc44.x86_64
+hyprgraphics-0:0.5.1-3.fc44.x86_64
+hyprlang-0:0.6.8-4.fc44.x86_64
+hyprutils-0:0.14.2-1.fc44.x86_64
+hyprwire-0:0.3.1-3.fc44.x86_64
+hyprland-guiutils-0:0.2.2-2.fc44.x86_64
+hyprtoolkit-0:0.6.0-1.fc44.x86_64
+dms-0:1.6.3-1.fc44.x86_64
+dms-cli-0:1.6.3-1.fc44.x86_64
+quickshell-0:0.3.2-1.fc44.x86_64
+cpptrace-0:1.0.4-4.fc44.x86_64
+ghostty-0:1.3.1-1.fc44.x86_64
+dgop-1:1.6.2-1.fc44.x86_64

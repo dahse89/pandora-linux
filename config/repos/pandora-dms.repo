@@ -1,0 +1,11 @@
+[pandora-dms]
+name=Pandora - avengemedia/dms - Fedora 44 stable RPMs
+baseurl=https://download.copr.fedorainfracloud.org/results/avengemedia/dms/fedora-44-x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file:///usr/share/pandora-linux/keys/avengemedia-dms.asc
+sslverify=1
+skip_if_unavailable=False
+priority=20
+includepkgs=dms,dms-cli

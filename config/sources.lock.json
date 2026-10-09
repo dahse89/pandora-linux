@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "fedora_release": "44",
+  "architecture": "x86_64",
+  "base_iso": {
+    "compose": "1.7",
+    "filename": "Fedora-Everything-netinst-x86_64-44-1.7.iso",
+    "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-44-1.7.iso",
+    "sha256": "bd285201494dd0ba09b54d05ac707de1401668b8512a573edb5922dcf9d7067e",
+    "size_bytes": 1217329152,
+    "checksum_filename": "Fedora-Everything-44-1.7-x86_64-CHECKSUM",
+    "checksum_url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/iso/Fedora-Everything-44-1.7-x86_64-CHECKSUM"
+  },
+  "fedora_signing_key": {
+    "fingerprint": "36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6",
+    "bundle_url": "https://fedoraproject.org/fedora.gpg",
+    "fingerprint_reference_url": "https://fedoraproject.org/security/"
+  },
+  "desktop": {
+    "repositories": [
+      {
+        "id": "pandora-dms",
+        "copr_project": "avengemedia/dms",
+        "prepared_repo_file": "config/repos/pandora-dms.repo",
+        "baseurl": "https://download.copr.fedorainfracloud.org/results/avengemedia/dms/fedora-44-x86_64/",
+        "signing_key": {
+          "url": "https://download.copr.fedorainfracloud.org/results/avengemedia/dms/pubkey.gpg",
+          "fingerprint": "162D064397AFD540A87168C24BF50D931C31FCAE",
+          "payload_file": "payload/files/usr/share/pandora-linux/keys/avengemedia-dms.asc",
+          "sha256": "a633fe95af9239cb0f0be969644cfbe68f70d5f2e2f5b6f7cd835369b13513b8"
+        }
+      },
+      {
+        "id": "pandora-danklinux",
+        "copr_project": "avengemedia/danklinux",
+        "prepared_repo_file": "config/repos/pandora-danklinux.repo",
+        "baseurl": "https://download.copr.fedorainfracloud.org/results/avengemedia/danklinux/fedora-44-x86_64/",
+        "signing_key": {
+          "url": "https://download.copr.fedorainfracloud.org/results/avengemedia/danklinux/pubkey.gpg",
+          "fingerprint": "882B9F1C415EE16EBE149A0DFD1E0AB06C2E4F4A",
+          "payload_file": "payload/files/usr/share/pandora-linux/keys/avengemedia-danklinux.asc",
+          "sha256": "d67041d49ddc75c8b170e06dd41a60ee6e9745aa04fc229042a22dbe21cc4494"
+        }
+      },
+      {
+        "id": "pandora-hyprland",
+        "copr_project": "lionheartp/Hyprland",
+        "prepared_repo_file": "config/repos/pandora-hyprland.repo",
+        "baseurl": "https://download.copr.fedorainfracloud.org/results/lionheartp/Hyprland/fedora-44-x86_64/",
+        "signing_key": {
+          "url": "https://download.copr.fedorainfracloud.org/results/lionheartp/Hyprland/pubkey.gpg",
+          "fingerprint": "97E23476C89635135407C7D5E9BA41342C4B2995",
+          "payload_file": "payload/files/usr/share/pandora-linux/keys/lionheartp-Hyprland.asc",
+          "sha256": "9f47c74eec4fea0f5a8cee1c6532bbeb33eee8134f762314bf16815a720dc047"
+        }
+      }
+    ]
+  },
+  "oh_my_zsh": {
+    "commit": "42a4ccb1b14dbeffe81259105a5243b4f4cb618e",
+    "archive_url": "https://codeload.github.com/ohmyzsh/ohmyzsh/tar.gz/42a4ccb1b14dbeffe81259105a5243b4f4cb618e",
+    "archive_sha256": "998e4d222ede178e5019dde77756a4473ba91546d1cb29017f0d1ea4fd9cc5d0",
+    "license": "MIT",
+    "license_sha256": "6772e603fd19666902ab7541f49f3d9e92637539fb0840605615d8c6d18fc3f6",
+    "archive_payload_file": "payload/vendor/oh-my-zsh-42a4ccb1b14dbeffe81259105a5243b4f4cb618e.tar.gz",
+    "license_payload_file": "payload/vendor/oh-my-zsh-LICENSE.txt"
+  },
+  "flathub": {
+    "url": "https://dl.flathub.org/repo/flathub.flatpakrepo",
+    "sha256": "3371dd250e61d9e1633630073fefda153cd4426f72f4afa0c3373ae2e8fea03a",
+    "payload_file": "payload/flatpak/flathub.flatpakrepo",
+    "signing_key_fingerprint": "6E5C05D979C76DAF93C081354184DD4D907A7CAE"
+  }
+}

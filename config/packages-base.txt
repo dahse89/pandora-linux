@@ -1,0 +1,22 @@
+# Fedora 44 base, installed by Anaconda. One package name per line.
+# Desktop packages and exact version pins belong in packages-desktop.txt.
+@core
+kernel
+NetworkManager
+NetworkManager-wifi
+wpa_supplicant
+linux-firmware
+sudo
+git
+curl
+btrfs-progs
+cryptsetup
+util-linux
+iproute
+rsyslog
+glibc-langpack-de
+firewalld
+selinux-policy-targeted
+policycoreutils
+systemd-pam
+dbus-broker

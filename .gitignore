@@ -1,0 +1,28 @@
+# Project downloads and generated build outputs
+/cache/
+/build/
+/artifacts/
+
+# VM disks and UEFI variable stores
+*.qcow
+*.qcow2
+*.vdi
+*.vmdk
+*.vhd
+*.vhdx
+*.raw
+*.img
+*.fd
+*.nvram
+*.vars
+*.uefi-vars
+
+# ISO images and unredacted installer logs / kickstart replay files
+*.iso
+*.log
+anaconda-ks.cfg
+initial-setup-ks.cfg
+
+# Python-generated files
+__pycache__/
+*.py[cod]

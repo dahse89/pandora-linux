@@ -1,0 +1,11 @@
+[pandora-hyprland]
+name=Pandora - lionheartp/Hyprland - Fedora 44 stable RPMs
+baseurl=https://download.copr.fedorainfracloud.org/results/lionheartp/Hyprland/fedora-44-x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file:///usr/share/pandora-linux/keys/lionheartp-Hyprland.asc
+sslverify=1
+skip_if_unavailable=False
+priority=20
+includepkgs=hyprland,hyprland-uwsm,uwsm,xdg-desktop-portal-hyprland,aquamarine,hyprcursor,hyprgraphics,hyprlang,hyprutils,hyprwire,hyprland-guiutils,hyprtoolkit,hyprqt6engine,hyprland-qt-support

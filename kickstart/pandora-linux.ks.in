@@ -1,0 +1,51 @@
+# Pandora Linux: disk, encryption passphrase and account remain interactive.
+#version=F44
+graphical
+lang @LOCALE@
+keyboard --vckeymap=@KEYBOARD@ --xlayouts='@KEYBOARD@'
+timezone @TIMEZONE@ --utc
+url --url="@FEDORA_REPO@"
+network --bootproto=dhcp --device=link --activate --onboot=yes
+selinux --enforcing
+firewall --enabled
+
+# No partitioning, bootloader, root password, user or automatic reboot directives.
+%packages --excludedocs --exclude-weakdeps
+@BASE_PACKAGES@
+%end
+
+# Outer phases deliberately retain real mount inspection. Existing product scripts
+# chroot every target command; invoking their storage guards inside chroot is invalid.
+%post --nochroot --interpreter=/bin/bash --erroronfail --log=/tmp/pandora-payload-copy.log
+set -euo pipefail
+umask 077
+export PYTHONDONTWRITEBYTECODE=1
+source_root=/run/install/repo/payload
+target_root=/mnt/sysroot
+# Bootstrap integrity before importing any executable code from the payload.
+(cd -- "$source_root"; sha256sum --check --strict <<'PANDORA_PAYLOAD_SHA256'
+@PAYLOAD_SHA256@
+PANDORA_PAYLOAD_SHA256
+)
+python3 "$source_root/payload/installer/installer.py" copy \
+    --source-root "$source_root" --target-root "$target_root" \
+    --manifest-sha256 @MANIFEST_SHA256@
+%end
+
+%post --nochroot --interpreter=/bin/bash --erroronfail --log=/mnt/sysroot/var/log/pandora-linux/provision.log
+set -euo pipefail
+umask 077
+export PYTHONDONTWRITEBYTECODE=1
+source_root=/mnt/sysroot/usr/share/pandora-linux/installer-source
+target_root=/mnt/sysroot
+(cd -- "$source_root"; sha256sum --check --strict <<'PANDORA_PAYLOAD_SHA256'
+@PAYLOAD_SHA256@
+PANDORA_PAYLOAD_SHA256
+)
+# Anaconda closes and flushes the previous log only after that script returns.
+# Copy it here, never from inside the still-running log-producing first phase.
+install -m 0600 /tmp/pandora-payload-copy.log "$target_root/var/log/pandora-linux/payload-copy.log"
+python3 "$source_root/payload/installer/installer.py" configure \
+    --source-root "$source_root" --target-root "$target_root" \
+    --manifest-sha256 @MANIFEST_SHA256@
+%end

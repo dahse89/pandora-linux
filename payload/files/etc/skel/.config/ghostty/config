@@ -1,0 +1,3 @@
+# Pandora Linux: use the account's login shell and packaged fonts.
+font-family = DejaVu Sans Mono
+font-size = 11
