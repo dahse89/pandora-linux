@@ -10,6 +10,7 @@ My personal Fedora remix. Pandora combines a lightweight Fedora base with Hyprla
 
 - Fedora 44 Everything for x86_64 with UEFI
 - Hyprland with DankMaterialShell and Quickshell, logging in through SDDM and UWSM
+- A Pandora SDDM login theme with the desktop wallpaper, blue accents, and German controls
 - Ghostty, Zsh, and a pinned version of Oh My Zsh
 - NetworkManager with Wi-Fi support, PipeWire, and WirePlumber
 - Flatpak with Flathub configured, without preinstalled Flatpak apps
@@ -57,7 +58,7 @@ Use a Fedora 44 VM or Fedora 44 x86_64 machine with a regular user account that 
 
 ```bash
 sudo dnf install lorax xorriso isomd5sum pykickstart ShellCheck \
-  make python3 curl git gnupg2 mtools dnf5 dnf5-plugins
+  make python3 curl git gnupg2 mtools dnf5 dnf5-plugins qt6-qtdeclarative-devel
 ```
 
 From the cloned project directory:
@@ -84,6 +85,8 @@ This uses neither `--privileged` nor disabled integrity checks. Mount capabiliti
 ### Verification and outputs
 
 `make iso` downloads the original Everything netinstall ISO and Fedora's signed CHECKSUM file. Existing downloads are also re-verified against the pinned Fedora signing key, file size, and SHA256. The build then combines the package lists and local files, renders the Kickstart template, and creates the ISO with `mkksiso`. Only `mkksiso` and the ownership correction for its output require sudo.
+
+`make check` also runs the SDDM theme's Qt Quick tests when Qt 6 `qmltestrunner` is available. They use mock login and power actions with offscreen software rendering; they never authenticate or change the host. Missing ShellCheck, F44 ksvalidator, or Qt test tools are reported as skipped. The Docker builder includes all three.
 
 Before publishing, the build checks the embedded payload, Kickstart file, UEFI boot parameters, both EFI images, and the media checksum. These checks do not replace an installation test.
 
@@ -151,7 +154,9 @@ Edit the files in the repository and rebuild. `payload/files/` maps to paths on 
 | `payload/files/etc/skel/.zshrc` | Zsh theme and Oh My Zsh plugins |
 | `payload/files/etc/skel/.config/DankMaterialShell/settings.json` | DMS theme, panel, widgets, and workspace settings |
 | `payload/files/etc/skel/.local/state/DankMaterialShell/session.json` | DMS wallpaper path and weather location |
-| `payload/files/usr/share/backgrounds/pandora/wallpaper.png` | Wallpaper |
+| `payload/files/usr/share/backgrounds/pandora/wallpaper.png` | Desktop and SDDM wallpaper |
+| `payload/files/usr/share/sddm/themes/pandora/` | SDDM login layout, colors, and background path |
+| `payload/files/etc/sddm.conf.d/30-pandora-theme.conf` | Select the Pandora SDDM theme |
 
 Hyprland is configured in Lua here. Examples for an older `hyprland.conf` do not apply to this configuration. DMS is started by Hyprland; do not also enable a DMS autostart service.
 
@@ -160,6 +165,20 @@ Add new user defaults under `payload/files/etc/skel/`. The installer applies the
 DMS starts with the blue theme, a compact top bar, and weather for Berlin. When importing DMS preferences from another installation, leave out launcher history, notes, cache, and hardware-specific session state.
 
 System configuration can go in paths such as `payload/files/etc/NetworkManager/conf.d/`. Prefer your own `conf.d` files where possible. For safety, an existing system file that differs from the provided one is not overwritten. Executable system files need the executable bit (`chmod +x`); user configuration files are installed with mode 0644. SELinux labels are restored.
+
+### Preview the login theme
+
+SDDM uses its own Qt 6 theme, separate from DMS and the lock screen. The theme has editable usernames, session and keyboard-layout selectors, a Caps Lock warning, optional password visibility, and restart/shutdown controls. It remembers SDDM's last user and session; choose Hyprland/UWSM on the first login. The form scrolls on short screens. Authentication still goes through SDDM/PAM; automatic login remains disabled.
+
+On a Fedora 44 system with SDDM installed, preview the installed theme without changing your current login session:
+
+```bash
+sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/pandora
+```
+
+Login and power actions have no effect in this test mode. To preview repository edits, pass `"$PWD/payload/files/usr/share/sddm/themes/pandora"` as the theme path. The configured wallpaper must be readable at the path in `theme.conf`; it must not live in a private home directory. If that file is missing, the theme uses a plain dark background.
+
+Changes take effect on the next SDDM start. Do not restart SDDM from an active desktop session: that ends the session. To stop using the theme, remove only `/etc/sddm.conf.d/30-pandora-theme.conf`, leaving the separate interactive-login settings intact. Test new theme changes in a VM before using them for your only login path.
 
 ### On an installed system
 

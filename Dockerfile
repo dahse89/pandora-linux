@@ -3,6 +3,7 @@ FROM registry.fedoraproject.org/fedora:44@sha256:1660054c93ea9c99c39cfcfbd7240f8
 RUN dnf install --assumeyes --setopt=install_weak_deps=False --setopt=gpgcheck=True \
         lorax xorriso isomd5sum pykickstart ShellCheck make python3 curl \
         gnupg2 mtools dnf5 dnf5-plugins sudo shadow-utils util-linux-core \
+        qt6-qtdeclarative-devel \
     && dnf clean all
 
 ARG BUILD_UID=1000
