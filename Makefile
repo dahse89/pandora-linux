@@ -1,13 +1,16 @@
 .DEFAULT_GOAL := iso
 PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-.PHONY: check iso clean
+.PHONY: check iso iso-docker clean
 
 check:
 	@python3 "$(PROJECT_ROOT)/iso.py" check
 
 iso:
 	@python3 "$(PROJECT_ROOT)/iso.py" build
+
+iso-docker:
+	@python3 "$(PROJECT_ROOT)/iso.py" build-docker
 
 # Remove generated builds only; keep authenticated downloads in cache/.
 clean:

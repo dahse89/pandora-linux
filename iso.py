@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build a Fedora netinstall remix from config/, kickstart/ and payload/.
 
-Only local input checks run on other systems. ISO creation requires Fedora 44;
-mkksiso is the only build operation that needs sudo.
+Native ISO creation requires Fedora 44. Other Linux hosts can use the Docker
+builder; mkksiso and its output ownership correction are the only sudo steps.
 """
 import argparse
 import ast
@@ -344,11 +344,78 @@ def verify_iso(root, stage, source_iso, iso, work):
     run("checkisomd5", "--verbose", iso)
 
 
+@contextmanager
+def docker_loop(image):
+    # The short-lived control helper has no repository mounts or network access.
+    control = ("docker", "run", "--rm", "--network", "none", "--read-only", "--user", "0:0",
+               "--cap-drop", "ALL", "--cap-add", "SYS_ADMIN", "--device", "/dev/loop-control",
+               image, "python3", "-c")
+    allocate = """import fcntl, json
+from pathlib import Path
+existing = {path.name for path in Path('/sys/block').glob('loop[0-9]*')}
+with open('/dev/loop-control', 'rb') as control:
+    index = fcntl.ioctl(control, 0x4C82)  # LOOP_CTL_GET_FREE
+major, minor = map(int, Path(f'/sys/block/loop{index}/dev').read_text().strip().split(':'))
+print(json.dumps([index, major, minor, f'loop{index}' not in existing]))
+"""
+    index, major, minor, created = json.loads(run(*control, allocate, capture=True))
+    print(f"Docker builder using /dev/loop{index} ({major}:{minor})", flush=True)
+    try:
+        yield index, major, minor
+    finally:
+        if created:
+            # Remove only a newly created, idle device. Never force-detach a host mapping.
+            release = """import fcntl, sys
+with open('/dev/loop-control', 'rb') as control:
+    fcntl.ioctl(control, 0x4C81, int(sys.argv[1]))  # LOOP_CTL_REMOVE fails if busy
+"""
+            run(*control, release, index)
+
+
+def build_docker(root):
+    if platform.system() != "Linux" or platform.machine() != "x86_64" or os.geteuid() == 0 or os.getegid() == 0:
+        raise ValueError("Docker builds require a normal user on Linux/x86_64")
+    if not shutil.which("docker") or not Path("/dev/loop-control").exists():
+        raise ValueError("Docker builds require Docker and /dev/loop-control; see README.md")
+    endpoint = run("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", capture=True).strip()
+    if (not endpoint.startswith("unix://") or
+            (os.environ.get("DOCKER_HOST") and not os.environ["DOCKER_HOST"].startswith("unix://"))):
+        raise ValueError("Docker builds require a local Docker daemon, not a remote context")
+    security = json.loads(run("docker", "info", "--format", "{{json .SecurityOptions}}", capture=True))
+    if any("rootless" in option or "userns" in option for option in security):
+        raise ValueError("Rootless Docker and user namespace remapping cannot manage host loop devices")
+    if ":" in str(root):
+        raise ValueError("Docker bind-mount paths must not contain a colon")
+    uid, gid = os.getuid(), os.getgid()
+    image = f"pandora-builder:f44-{uid}-{gid}"
+    run("docker", "build", "--platform", "linux/amd64", "--build-arg", f"BUILD_UID={uid}",
+        "--build-arg", f"BUILD_GID={gid}", "--tag", image, "--file", root / "Dockerfile", root)
+    writable = [directory(root / name) for name in ("cache", "build", "artifacts")]
+    with docker_loop(image) as (index, major, minor):
+        args = ["docker", "run", "--rm", "--init", "--user", "0:0", "--cap-drop", "ALL"]
+        for capability in ("SYS_ADMIN", "MKNOD", "DAC_OVERRIDE", "FOWNER", "CHOWN", "SETUID", "SETGID"):
+            args.extend(("--cap-add", capability))
+        args.extend(("--device-cgroup-rule", f"b {major}:{minor} rwm", "--volume", f"{root}:/work:ro"))
+        for path in writable:
+            args.extend(("--volume", f"{path}:/work/{path.name}:rw"))
+        # Create only the permitted node, then drop to the host user's UID/GID before make iso.
+        start = """import os, stat, sys
+index, major, minor, uid, gid = map(int, sys.argv[1:])
+os.mknod(f'/dev/loop{index}', stat.S_IFBLK | 0o600, os.makedev(major, minor))
+os.setgroups([])
+os.setgid(gid)
+os.setuid(uid)
+os.execv('/usr/bin/make', ['make', 'iso'])
+"""
+        run(*args, image, "python3", "-c", start, index, major, minor, uid, gid)
+
+
 def build(root):
     build_environment(root)
     build_dir = directory(root / "build")
     artifacts = directory(root / "artifacts")
-    with locked(build_dir / ".iso.lock"), tempfile.TemporaryDirectory(prefix="iso-", dir=build_dir) as temporary:
+    # Stage on the output filesystem so atomic publication also works across Docker bind mounts.
+    with locked(build_dir / ".iso.lock"), tempfile.TemporaryDirectory(prefix=".iso-", dir=artifacts) as temporary:
         work = Path(temporary)
         stage = work / "stage"
         stage.mkdir(mode=0o755)
@@ -391,13 +458,15 @@ def build(root):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("check", "build"))
+    parser.add_argument("action", choices=("check", "build", "build-docker"))
     args = parser.parse_args()
     os.environ["LC_ALL"] = "C"
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
     try:
         if args.action == "build":
             build(ROOT)
+        elif args.action == "build-docker":
+            build_docker(ROOT)
         else:
             with tempfile.TemporaryDirectory(prefix="pandora-check-") as temporary:
                 check(ROOT, Path(temporary))

@@ -1,0 +1,3 @@
+# The image contains tools only; product inputs are mounted at runtime.
+**
+!Dockerfile

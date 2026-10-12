@@ -4,7 +4,7 @@ Philipp's Adaptive Native Desktop, built on Fedora.
 
 My personal Fedora remix. Pandora combines a lightweight Fedora base with Hyprland and DankMaterialShell, my terminal setup, and a few carefully chosen defaults. This repository describes the system and builds a custom installation ISO. Use it as a starting point for your own setup.
 
-![Pandora Linux wallpaper](payload/files/usr/share/backgrounds/pandora/wallpaper.png)
+![Pandora Linux desktop](assets/pandora-desktop.png)
 
 ## What's included
 
@@ -27,7 +27,8 @@ This setup has been manually tested for my own use. Before installing it on your
 .
 ├── README.md                      Usage, build, and customization
 ├── AGENTS.md                      Development guidelines
-├── Makefile                       make check, make iso, make clean
+├── Makefile                       make check, make iso, make iso-docker, make clean
+├── Dockerfile                     Fedora 44 build tools, without product files
 ├── iso.py                         Source verification, payload, and ISO build
 ├── config/
 │   ├── profile.json               Language, keyboard, time zone, and ISO name
@@ -48,9 +49,11 @@ This setup has been manually tested for my own use. Before installing it on your
 
 ## Build the ISO
 
-Use a Fedora 44 VM or Fedora 44 x86_64 machine with a regular user account that can use sudo and at least 20 GiB of free space. You can edit the repository on another host, but the ISO must be built on Fedora. The script rejects other releases and refuses to run as root.
+ISO builds run on Fedora 44/x86_64 as a regular user and require at least 20 GiB of free space. Use a Fedora machine or the Docker builder on another Linux host. The Fedora release and non-root checks apply in both cases.
 
-Install the build tools once in the Fedora build environment:
+### Native Fedora build
+
+Use a Fedora 44 VM or Fedora 44 x86_64 machine with a regular user account that can use sudo. Install the build tools once:
 
 ```bash
 sudo dnf install lorax xorriso isomd5sum pykickstart ShellCheck \
@@ -63,6 +66,22 @@ From the cloned project directory:
 make check
 make iso
 ```
+
+### Docker build on Linux
+
+On a Linux/x86_64 host with a running local, rootful Docker daemon, Python 3, Make, and `/dev/loop-control`, run as your normal user:
+
+```bash
+make iso-docker
+```
+
+The first run builds a tools-only Fedora 44 image from the digest pinned in `Dockerfile`. Later runs reuse Docker's image cache. The container runs the same `make iso` with your host UID/GID, so generated files remain yours. The repository is mounted read-only; only `cache/`, `build/`, and `artifacts/` are writable. Host packages, home directories, and the Docker socket are not mounted or modified.
+
+The EFI-image step needs `SYS_ADMIN` and one unused loop device. A short-lived helper with no network or repository mounts selects that device through `/dev/loop-control`. The build container can access only the selected block device and has no loop-control device or physical disks. Only `mkksiso` and its output ownership correction use sudo; the container's initial device-node setup also runs as root. Newly created loop devices are removed after the build if idle; existing devices are not removed, and a busy device is never force-detached.
+
+This uses neither `--privileged` nor disabled integrity checks. Mount capabilities are still powerful, and Docker access itself grants substantial host privileges: build trusted code only. Rootless Docker, user namespace remapping, and remote Docker daemons are not supported. A Fedora VM provides stronger isolation.
+
+### Verification and outputs
 
 `make iso` downloads the original Everything netinstall ISO and Fedora's signed CHECKSUM file. Existing downloads are also re-verified against the pinned Fedora signing key, file size, and SHA256. The build then combines the package lists and local files, renders the Kickstart template, and creates the ISO with `mkksiso`. Only `mkksiso` and the ownership correction for its output require sudo.
 
@@ -130,18 +149,21 @@ Edit the files in the repository and rebuild. `payload/files/` maps to paths on 
 | `payload/files/etc/skel/.config/hypr/hyprland.lua` | Monitors, layout, shortcuts, and DMS startup |
 | `payload/files/etc/skel/.config/ghostty/config` | Terminal settings |
 | `payload/files/etc/skel/.zshrc` | Zsh theme and Oh My Zsh plugins |
-| `payload/files/etc/skel/.local/state/DankMaterialShell/session.json` | DMS defaults, including the wallpaper path |
+| `payload/files/etc/skel/.config/DankMaterialShell/settings.json` | DMS theme, panel, widgets, and workspace settings |
+| `payload/files/etc/skel/.local/state/DankMaterialShell/session.json` | DMS wallpaper path and weather location |
 | `payload/files/usr/share/backgrounds/pandora/wallpaper.png` | Wallpaper |
 
 Hyprland is configured in Lua here. Examples for an older `hyprland.conf` do not apply to this configuration. DMS is started by Hyprland; do not also enable a DMS autostart service.
 
 Add new user defaults under `payload/files/etc/skel/`. The installer applies them to the account created during installation and to future users. Existing personal files are preserved.
 
+DMS starts with the blue theme, a compact top bar, and weather for Berlin. When importing DMS preferences from another installation, leave out launcher history, notes, cache, and hardware-specific session state.
+
 System configuration can go in paths such as `payload/files/etc/NetworkManager/conf.d/`. Prefer your own `conf.d` files where possible. For safety, an existing system file that differs from the provided one is not overwritten. Executable system files need the executable bit (`chmod +x`); user configuration files are installed with mode 0644. SELinux labels are restored.
 
 ### On an installed system
 
-Edit your own files under `~/.config/hypr/`, `~/.config/ghostty/`, and `~/.zshrc`. Reload Hyprland with `hyprctl reload`; for session startup changes, log out and back in. You can change the wallpaper in DMS.
+Edit your own files under `~/.config/hypr/`, `~/.config/ghostty/`, and `~/.zshrc`. Reload Hyprland with `hyprctl reload`; for session startup changes, log out and back in. Adjust the panel, theme, widgets, and wallpaper in DMS.
 
 Repository changes do not modify an existing installation. Apply any settings you want there deliberately; the installation scripts are not an update tool for a running system.
 

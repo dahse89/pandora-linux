@@ -1,4 +1,6 @@
 {
   "configVersion": 5,
-  "wallpaperPath": "/usr/share/backgrounds/pandora/wallpaper.png"
+  "wallpaperPath": "/usr/share/backgrounds/pandora/wallpaper.png",
+  "weatherLocation": "Berlin",
+  "weatherCoordinates": "52.5173885,13.3951309"
 }
