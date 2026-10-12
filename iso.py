@@ -235,7 +235,15 @@ def check(root, stage):
                 run(tool, "-v", "F44", stage / "pandora-linux.ks")
         else:
             print(f"{tool} not installed; its check was skipped")
-    print("Product inputs, payload integrity and available syntax checks passed")
+    qmltest = next((shutil.which(tool) for tool in (
+        "qmltestrunner-qt6", "/usr/lib64/qt6/bin/qmltestrunner", "/usr/lib/qt6/bin/qmltestrunner")
+        if shutil.which(tool)), None)
+    if qmltest:
+        subprocess.run([qmltest, "-input", str(root / "tests")], check=True,
+                       env=os.environ | {"QT_QPA_PLATFORM": "offscreen", "QT_QUICK_BACKEND": "software"})
+    else:
+        print("Qt 6 qmltestrunner not installed; SDDM theme tests were skipped")
+    print("Product inputs, payload integrity and available syntax/theme checks passed")
 
 
 def build_environment(root):

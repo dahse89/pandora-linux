@@ -9,6 +9,7 @@ alsa-utils
 flatpak
 zsh
 sddm
+qt6-qtdeclarative
 xdg-desktop-portal
 xdg-desktop-portal-gtk
 wl-clipboard
