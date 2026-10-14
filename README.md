@@ -50,7 +50,7 @@ This setup has been manually tested for my own use. Before installing it on your
 
 ## Build the ISO
 
-ISO builds run on Fedora 44/x86_64 as a regular user and require at least 20 GiB of free space. Use a Fedora machine or the Docker builder on another Linux host. The Fedora release and non-root checks apply in both cases.
+ISO builds run in Fedora 44/x86_64 as a regular user and require at least 20 GiB of free space on the filesystem containing the repository. Use a Fedora machine or the Docker builder on Linux/x86_64 or macOS (Intel or Apple Silicon). The Fedora release and architecture checks apply inside the builder; the result is always an x86_64 ISO, not an ARM installer.
 
 ### Native Fedora build
 
@@ -68,25 +68,27 @@ make check
 make iso
 ```
 
-### Docker build on Linux
+### Docker build on Linux or macOS
 
-On a Linux/x86_64 host with a running local, rootful Docker daemon, Python 3, Make, and `/dev/loop-control`, run as your normal user:
+Install Python 3 and Make, and start a local, rootful Linux Docker daemon. On Linux/x86_64, its kernel must provide `/dev/loop-control`. On macOS, use Docker Desktop with AMD64 execution support enabled; Apple Silicon runs the Fedora tools under emulation. The loop device belongs to Docker Desktop's Linux VM, not macOS. Run as your normal user with a non-root primary group:
 
 ```bash
 make iso-docker
 ```
 
-The first run builds a tools-only Fedora 44 image from the digest pinned in `Dockerfile`. Later runs reuse Docker's image cache. The container runs the same `make iso` with your host UID/GID, so generated files remain yours. The repository is mounted read-only; only `cache/`, `build/`, and `artifacts/` are writable. Host packages, home directories, and the Docker socket are not mounted or modified.
+The first run builds a tools-only Fedora 44 image from the digest pinned in `Dockerfile`. Later runs reuse Docker's image cache. Both image creation and container execution explicitly use `linux/amd64`. The container runs the same `make iso` with your host UID/GID, so generated files remain yours. The repository is mounted read-only; only `cache/`, `build/`, and `artifacts/` are writable. Host packages, home directories, and the Docker socket are not mounted or modified.
 
-The EFI-image step needs `SYS_ADMIN` and one unused loop device. A short-lived helper with no network or repository mounts selects that device through `/dev/loop-control`. The build container can access only the selected block device and has no loop-control device or physical disks. Only `mkksiso` and its output ownership correction use sudo; the container's initial device-node setup also runs as root. Newly created loop devices are removed after the build if idle; existing devices are not removed, and a busy device is never force-detached.
+The EFI-image step needs `SYS_ADMIN` and one unused loop device in the Docker daemon's kernel. A short-lived helper with no network or repository mounts selects that device through the daemon's `/dev/loop-control`. The build container can access only the selected block device and has no loop-control device or physical disks. Only `mkksiso` and its output ownership correction use sudo; the container's initial device-node setup also runs as root. Newly created loop devices are removed after the build if idle; existing devices are not removed, and a busy device is never force-detached.
 
-This uses neither `--privileged` nor disabled integrity checks. Mount capabilities are still powerful, and Docker access itself grants substantial host privileges: build trusted code only. Rootless Docker, user namespace remapping, and remote Docker daemons are not supported. A Fedora VM provides stronger isolation.
+This uses neither `--privileged` nor disabled integrity checks. Mount capabilities are still powerful, and Docker access itself grants substantial host privileges: build trusted code only. Rootless Docker, user namespace remapping, and remote Docker daemons are not supported. Docker Desktop configurations that block the required device or mount access are also unsupported. A Fedora VM provides stronger isolation.
+
+On macOS, ensure Docker Desktop has enough disk space as well as the repository filesystem. A failed AMD64 image build or helper startup may indicate that AMD64 emulation is unavailable. A missing `/dev/loop-control` error refers to the Linux daemon, not a device to create on macOS. Disk-space and device-access failures must be resolved rather than bypassed.
 
 ### Verification and outputs
 
 `make iso` downloads the original Everything netinstall ISO and Fedora's signed CHECKSUM file. Existing downloads are also re-verified against the pinned Fedora signing key, file size, and SHA256. The build then combines the package lists and local files, renders the Kickstart template, and creates the ISO with `mkksiso`. Only `mkksiso` and the ownership correction for its output require sudo.
 
-`make check` also runs the SDDM theme's Qt Quick tests when Qt 6 `qmltestrunner` is available. They use mock login and power actions with offscreen software rendering; they never authenticate or change the host. Missing ShellCheck, F44 ksvalidator, or Qt test tools are reported as skipped. The Docker builder includes all three.
+`make check` runs Python regression tests for Docker host compatibility and invocation safeguards without starting Docker. It also runs the SDDM theme's Qt Quick tests when Qt 6 `qmltestrunner` is available. They use mock login and power actions with offscreen software rendering; they never authenticate or change the host. Missing ShellCheck, F44 ksvalidator, or Qt test tools are reported as skipped. The Docker builder includes all three.
 
 Before publishing, the build checks the embedded payload, Kickstart file, UEFI boot parameters, both EFI images, and the media checksum. These checks do not replace an installation test.
 
