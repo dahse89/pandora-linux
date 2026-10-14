@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build a Fedora netinstall remix from config/, kickstart/ and payload/.
 
-Native ISO creation requires Fedora 44. Other Linux hosts can use the Docker
-builder; mkksiso and its output ownership correction are the only sudo steps.
+Native ISO creation requires Fedora 44/x86_64. Linux/x86_64 and macOS hosts
+can use the AMD64 Docker builder; mkksiso and its output ownership correction
+are the only sudo steps.
 """
 import argparse
 import ast
@@ -224,6 +225,7 @@ def check(root, stage):
     verify_stage(root, stage)
     for path in [root / "iso.py", *(root / "payload/installer").glob("*.py")]:
         ast.parse(path.read_text(), filename=str(path))
+    run(sys.executable, "-B", "-m", "unittest", "discover", "-s", root / "tests", "-p", "test_*.py")
     shell = [*(root / "payload/installer").glob("*.sh"), root / "payload/files/usr/local/bin/pandora-screenshot"]
     for path in shell:
         run("bash", "-n", path)
@@ -253,8 +255,13 @@ def build_environment(root):
     for tool in TOOLS:
         if not shutil.which(tool):
             raise ValueError(f"Missing build tool: {tool}; see README.md")
-    if shutil.disk_usage(root).free < 20 * 1024 ** 3:
-        raise ValueError("ISO creation requires at least 20 GiB free")
+    build_space(root)
+
+
+def build_space(root):
+    free = shutil.disk_usage(root).free
+    if free < 20 * 1024 ** 3:
+        raise ValueError(f"ISO creation requires at least 20 GiB free at {root} (found {free / 1024 ** 3:.1f} GiB)")
 
 
 def directory(path):
@@ -355,7 +362,7 @@ def verify_iso(root, stage, source_iso, iso, work):
 @contextmanager
 def docker_loop(image):
     # The short-lived control helper has no repository mounts or network access.
-    control = ("docker", "run", "--rm", "--network", "none", "--read-only", "--user", "0:0",
+    control = ("docker", "run", "--platform", "linux/amd64", "--rm", "--network", "none", "--read-only", "--user", "0:0",
                "--cap-drop", "ALL", "--cap-add", "SYS_ADMIN", "--device", "/dev/loop-control",
                image, "python3", "-c")
     allocate = """import fcntl, json
@@ -380,27 +387,37 @@ with open('/dev/loop-control', 'rb') as control:
             run(*control, release, index)
 
 
-def build_docker(root):
-    if platform.system() != "Linux" or platform.machine() != "x86_64" or os.geteuid() == 0 or os.getegid() == 0:
-        raise ValueError("Docker builds require a normal user on Linux/x86_64")
-    if not shutil.which("docker") or not Path("/dev/loop-control").exists():
-        raise ValueError("Docker builds require Docker and /dev/loop-control; see README.md")
+def docker_environment(root):
+    host = (platform.system(), platform.machine())
+    if host not in (("Linux", "x86_64"), ("Darwin", "arm64"), ("Darwin", "x86_64")):
+        raise ValueError("Docker builds require Linux/x86_64 or macOS (Intel or Apple Silicon)")
+    if os.geteuid() == 0 or os.getegid() == 0:
+        raise ValueError("Docker builds require a normal user with a non-root primary group")
+    if not shutil.which("docker"):
+        raise ValueError("Docker builds require Docker; see README.md")
     endpoint = run("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", capture=True).strip()
     if (not endpoint.startswith("unix://") or
             (os.environ.get("DOCKER_HOST") and not os.environ["DOCKER_HOST"].startswith("unix://"))):
         raise ValueError("Docker builds require a local Docker daemon, not a remote context")
-    security = json.loads(run("docker", "info", "--format", "{{json .SecurityOptions}}", capture=True))
-    if any("rootless" in option or "userns" in option for option in security):
-        raise ValueError("Rootless Docker and user namespace remapping cannot manage host loop devices")
+    info = json.loads(run("docker", "info", "--format", "{{json .}}", capture=True))
+    if info["OSType"] != "linux" or info["Architecture"] not in ("x86_64", "amd64", "aarch64", "arm64"):
+        raise ValueError("Docker builds require a Linux AMD64 or ARM64 daemon with AMD64 execution support")
+    if any("rootless" in option or "userns" in option for option in info["SecurityOptions"]):
+        raise ValueError("Rootless Docker and user namespace remapping cannot manage daemon loop devices")
     if ":" in str(root):
         raise ValueError("Docker bind-mount paths must not contain a colon")
+    build_space(root)
+
+
+def build_docker(root):
+    docker_environment(root)
     uid, gid = os.getuid(), os.getgid()
     image = f"pandora-builder:f44-{uid}-{gid}"
     run("docker", "build", "--platform", "linux/amd64", "--build-arg", f"BUILD_UID={uid}",
         "--build-arg", f"BUILD_GID={gid}", "--tag", image, "--file", root / "Dockerfile", root)
     writable = [directory(root / name) for name in ("cache", "build", "artifacts")]
     with docker_loop(image) as (index, major, minor):
-        args = ["docker", "run", "--rm", "--init", "--user", "0:0", "--cap-drop", "ALL"]
+        args = ["docker", "run", "--platform", "linux/amd64", "--rm", "--init", "--user", "0:0", "--cap-drop", "ALL"]
         for capability in ("SYS_ADMIN", "MKNOD", "DAC_OVERRIDE", "FOWNER", "CHOWN", "SETUID", "SETGID"):
             args.extend(("--cap-add", capability))
         args.extend(("--device-cgroup-rule", f"b {major}:{minor} rwm", "--volume", f"{root}:/work:ro"))
